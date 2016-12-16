@@ -1146,6 +1146,15 @@ static const struct sc_asn1_entry c_asn1_com_obj_attr[6] = {
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 
+/* subClassAttributes and typeAttributes get EXPLICIT SEQUENCE tagging
+ * due to X.680 30.6 c) An untagged DummyReference is tagged explicitly
+ * and the fact that through out the spec it always refers to a SEQUENCE
+ * So strip that one extra tag out here. */
+static const struct sc_asn1_entry c_asn1_explicit_tag[2] = {
+	{ "explicitTag", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
+	{ NULL, 0, 0, 0, NULL, NULL }
+};
+
 static const struct sc_asn1_entry c_asn1_p15_obj[5] = {
 	{ "commonObjectAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ "classAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
@@ -1159,7 +1168,7 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 				  int depth)
 {
 	struct sc_pkcs15_object *p15_obj = obj->p15_obj;
-	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5];
+	struct sc_asn1_entry asn1_c_attr[6], asn1_p15_obj[5], asn1_sub_tag[2], asn1_type_tag[2];
 	struct sc_asn1_entry asn1_ac_rules[SC_PKCS15_MAX_ACCESS_RULES + 1], asn1_ac_rule[SC_PKCS15_MAX_ACCESS_RULES][3];
 	size_t flags_len = sizeof(p15_obj->flags);
 	size_t label_len = sizeof(p15_obj->label);
@@ -1170,8 +1179,9 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 		sc_copy_asn1_entry(c_asn1_access_control_rule, asn1_ac_rule[ii]);
 	sc_copy_asn1_entry(c_asn1_access_control_rules, asn1_ac_rules);
 
-
 	sc_copy_asn1_entry(c_asn1_com_obj_attr, asn1_c_attr);
+	sc_copy_asn1_entry(c_asn1_explicit_tag, asn1_sub_tag);
+	sc_copy_asn1_entry(c_asn1_explicit_tag, asn1_type_tag);
 	sc_copy_asn1_entry(c_asn1_p15_obj, asn1_p15_obj);
 	sc_format_asn1_entry(asn1_c_attr + 0, p15_obj->label, &label_len, 0);
 	sc_format_asn1_entry(asn1_c_attr + 1, &p15_obj->flags, &flags_len, 0);
@@ -1187,8 +1197,10 @@ static int asn1_decode_p15_object(sc_context_t *ctx, const u8 *in,
 
 	sc_format_asn1_entry(asn1_p15_obj + 0, asn1_c_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_p15_obj + 1, obj->asn1_class_attr, NULL, 0);
-	sc_format_asn1_entry(asn1_p15_obj + 2, obj->asn1_subclass_attr, NULL, 0);
-	sc_format_asn1_entry(asn1_p15_obj + 3, obj->asn1_type_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_p15_obj + 2, asn1_sub_tag, NULL, 0);
+	sc_format_asn1_entry(asn1_p15_obj + 3, asn1_type_tag, NULL, 0);
+	sc_format_asn1_entry(asn1_sub_tag + 0, obj->asn1_subclass_attr, NULL, 0);
+	sc_format_asn1_entry(asn1_type_tag + 0, obj->asn1_type_attr, NULL, 0);
 
 	r = asn1_decode(ctx, asn1_p15_obj, in, len, NULL, NULL, 0, depth + 1);
 	return r;
@@ -1198,7 +1210,7 @@ static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15
 				  u8 **buf, size_t *bufsize, int depth)
 {
 	struct sc_pkcs15_object p15_obj = *obj->p15_obj;
-	struct sc_asn1_entry    asn1_c_attr[6], asn1_p15_obj[5];
+	struct sc_asn1_entry    asn1_c_attr[6], asn1_p15_obj[5], asn1_sub_tag[2], asn1_type_tag[2];
 	struct sc_asn1_entry asn1_ac_rules[SC_PKCS15_MAX_ACCESS_RULES + 1], asn1_ac_rule[SC_PKCS15_MAX_ACCESS_RULES][3];
 	size_t label_len = strlen(p15_obj.label);
 	size_t flags_len;
@@ -1242,9 +1254,14 @@ static int asn1_encode_p15_object(sc_context_t *ctx, const struct sc_asn1_pkcs15
 
 	sc_format_asn1_entry(asn1_p15_obj + 0, asn1_c_attr, NULL, 1);
 	sc_format_asn1_entry(asn1_p15_obj + 1, obj->asn1_class_attr, NULL, 1);
-	if (obj->asn1_subclass_attr != NULL && obj->asn1_subclass_attr->name)
-		sc_format_asn1_entry(asn1_p15_obj + 2, obj->asn1_subclass_attr, NULL, 1);
-	sc_format_asn1_entry(asn1_p15_obj + 3, obj->asn1_type_attr, NULL, 1);
+	if (obj->asn1_subclass_attr != NULL && obj->asn1_subclass_attr->name) {
+		sc_copy_asn1_entry(c_asn1_explicit_tag, asn1_sub_tag);
+		sc_format_asn1_entry(asn1_sub_tag, obj->asn1_subclass_attr, NULL, 1);
+		sc_format_asn1_entry(asn1_p15_obj + 2, asn1_sub_tag, NULL, 1);
+	}
+	sc_copy_asn1_entry(c_asn1_explicit_tag, asn1_type_tag);
+	sc_format_asn1_entry(asn1_type_tag, obj->asn1_type_attr, NULL, 1);
+	sc_format_asn1_entry(asn1_p15_obj + 3, asn1_type_tag, NULL, 1);
 
 	r = asn1_encode(ctx, asn1_p15_obj, buf, bufsize, depth + 1);
 	return r;

@@ -415,10 +415,6 @@ static const struct sc_asn1_entry c_asn1_x509_cert_attr[] = {
 	{ "value",	SC_ASN1_CHOICE, 0, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
-static const struct sc_asn1_entry c_asn1_type_cert_attr[] = {
-	{ "x509CertificateAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
 static const struct sc_asn1_entry c_asn1_cert[] = {
 	{ "x509Certificate", SC_ASN1_PKCS15_OBJECT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
@@ -432,11 +428,11 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	sc_context_t *ctx = p15card->card->ctx;
 	struct sc_pkcs15_cert_info info;
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
-				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
+				asn1_x509_cert_attr[2],
 				asn1_cert[2], asn1_x509_cert_value_choice[3];
 	struct sc_asn1_pkcs15_object cert_obj = {
 		obj, asn1_com_cert_attr, NULL,
-		asn1_type_cert_attr };
+		asn1_x509_cert_attr };
 	sc_pkcs15_der_t *der = &info.value;
 	u8 id_value[128];
 	int id_type;
@@ -447,7 +443,6 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	sc_copy_asn1_entry(c_asn1_com_cert_attr, asn1_com_cert_attr);
 	sc_copy_asn1_entry(c_asn1_x509_cert_attr, asn1_x509_cert_attr);
 	sc_copy_asn1_entry(c_asn1_x509_cert_value_choice, asn1_x509_cert_value_choice);
-	sc_copy_asn1_entry(c_asn1_type_cert_attr, asn1_type_cert_attr);
 	sc_copy_asn1_entry(c_asn1_cert, asn1_cert);
 
 	sc_format_asn1_entry(asn1_cred_ident + 0, &id_type, NULL, 0);
@@ -458,7 +453,6 @@ sc_pkcs15_decode_cdf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obje
 	sc_format_asn1_entry(asn1_x509_cert_attr + 0, asn1_x509_cert_value_choice, NULL, 0);
 	sc_format_asn1_entry(asn1_x509_cert_value_choice + 0, &info.path, NULL, 0);
 	sc_format_asn1_entry(asn1_x509_cert_value_choice + 1, &der->value, &der->len, 0);
-	sc_format_asn1_entry(asn1_type_cert_attr + 0, asn1_x509_cert_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_cert + 0, &cert_obj, NULL, 0);
 
 	/* Fill in defaults */
@@ -497,20 +491,19 @@ sc_pkcs15_encode_cdf_entry(sc_context_t *ctx, const struct sc_pkcs15_object *obj
 		u8 **buf, size_t *bufsize)
 {
 	struct sc_asn1_entry	asn1_cred_ident[3], asn1_com_cert_attr[4],
-				asn1_x509_cert_attr[2], asn1_type_cert_attr[2],
+				asn1_x509_cert_attr[2],
 				asn1_cert[2], asn1_x509_cert_value_choice[3];
 	struct sc_pkcs15_cert_info *infop = (sc_pkcs15_cert_info_t *) obj->data;
 	sc_pkcs15_der_t *der = &infop->value;
 	struct sc_asn1_pkcs15_object cert_obj = { (struct sc_pkcs15_object *) obj,
 							asn1_com_cert_attr, NULL,
-							asn1_type_cert_attr };
+							asn1_x509_cert_attr };
 	int r;
 
 	sc_copy_asn1_entry(c_asn1_cred_ident, asn1_cred_ident);
 	sc_copy_asn1_entry(c_asn1_com_cert_attr, asn1_com_cert_attr);
 	sc_copy_asn1_entry(c_asn1_x509_cert_attr, asn1_x509_cert_attr);
 	sc_copy_asn1_entry(c_asn1_x509_cert_value_choice, asn1_x509_cert_value_choice);
-	sc_copy_asn1_entry(c_asn1_type_cert_attr, asn1_type_cert_attr);
 	sc_copy_asn1_entry(c_asn1_cert, asn1_cert);
 
 	sc_format_asn1_entry(asn1_com_cert_attr + 0, (void *) &infop->id, NULL, 1);
@@ -521,7 +514,6 @@ sc_pkcs15_encode_cdf_entry(sc_context_t *ctx, const struct sc_pkcs15_object *obj
 	} else {
 		sc_format_asn1_entry(asn1_x509_cert_value_choice + 1, der->value, &der->len, 1);
 	}
-	sc_format_asn1_entry(asn1_type_cert_attr + 0, &asn1_x509_cert_value_choice, NULL, 1);
 	sc_format_asn1_entry(asn1_cert + 0, (void *) &cert_obj, NULL, 1);
 
 	r = sc_asn1_encode(ctx, asn1_cert, buf, bufsize);

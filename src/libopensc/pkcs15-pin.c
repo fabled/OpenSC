@@ -52,19 +52,11 @@ static const struct sc_asn1_entry c_asn1_pin_attr[] = {
 	{ "path",         SC_ASN1_PATH, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
-static const struct sc_asn1_entry c_asn1_type_pin_attr[] = {
-	{ "pinAttributes", SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
 
 /* Auth Key attributes */
 static const struct sc_asn1_entry c_asn1_authkey_attr[] = {
 	{ "derivedKey",	SC_ASN1_BOOLEAN, SC_ASN1_TAG_BOOLEAN, SC_ASN1_OPTIONAL, NULL, NULL },
 	{ "authKeyId",  SC_ASN1_PKCS15_ID, SC_ASN1_TAG_OCTET_STRING, 0, NULL, NULL },
-	{ NULL, 0, 0, 0, NULL, NULL }
-};
-static const struct sc_asn1_entry c_asn1_type_authkey_attr[] = {
-	{ "authKeyAttributes",	SC_ASN1_STRUCT, SC_ASN1_TAG_SEQUENCE | SC_ASN1_CONS, 0, NULL, NULL },
 	{ NULL, 0, 0, 0, NULL, NULL }
 };
 static const struct sc_asn1_entry c_asn1_auth_type[] = {
@@ -90,12 +82,12 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	size_t derived_len = sizeof(info.attrs.authkey.derived);
 	size_t padchar_len = 1;
 	struct sc_asn1_entry asn1_com_ao_attr[2];
-	struct sc_asn1_entry asn1_pin_attr[10], asn1_type_pin_attr[2];
-	struct sc_asn1_entry asn1_authkey_attr[3], asn1_type_authkey_attr[2];
+	struct sc_asn1_entry asn1_pin_attr[10];
+	struct sc_asn1_entry asn1_authkey_attr[3];
 	struct sc_asn1_entry asn1_auth_type[2];
 	struct sc_asn1_entry asn1_auth_type_choice[4];
-	struct sc_asn1_pkcs15_object pin_obj = { obj, asn1_com_ao_attr, NULL, asn1_type_pin_attr };
-	struct sc_asn1_pkcs15_object authkey_obj = { obj, asn1_com_ao_attr, NULL, asn1_type_authkey_attr };
+	struct sc_asn1_pkcs15_object pin_obj = { obj, asn1_com_ao_attr, NULL, asn1_pin_attr };
+	struct sc_asn1_pkcs15_object authkey_obj = { obj, asn1_com_ao_attr, NULL, asn1_authkey_attr };
 
 	SC_FUNC_CALLED(ctx, SC_LOG_DEBUG_ASN1);
 
@@ -104,10 +96,8 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 
 	sc_copy_asn1_entry(c_asn1_com_ao_attr, asn1_com_ao_attr);
 
-	sc_copy_asn1_entry(c_asn1_type_pin_attr, asn1_type_pin_attr);
 	sc_copy_asn1_entry(c_asn1_pin_attr, asn1_pin_attr);
 
-	sc_copy_asn1_entry(c_asn1_type_authkey_attr, asn1_type_authkey_attr);
 	sc_copy_asn1_entry(c_asn1_authkey_attr, asn1_authkey_attr);
 
 	sc_format_asn1_entry(asn1_auth_type + 0, asn1_auth_type_choice, NULL, 0);
@@ -115,7 +105,6 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	sc_format_asn1_entry(asn1_auth_type_choice + 2, &authkey_obj, NULL, 0);	/* 'authKey' */
 
 	/* pinAttributes */
-	sc_format_asn1_entry(asn1_type_pin_attr + 0, asn1_pin_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 0, &info.attrs.pin.flags, &flags_len, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 1, &info.attrs.pin.type, NULL, 0);
 	sc_format_asn1_entry(asn1_pin_attr + 2, &info.attrs.pin.min_length, NULL, 0);
@@ -125,7 +114,6 @@ sc_pkcs15_decode_aodf_entry(struct sc_pkcs15_card *p15card, struct sc_pkcs15_obj
 	sc_format_asn1_entry(asn1_pin_attr + 6, &info.attrs.pin.pad_char, &padchar_len, 0);
 
 	/* authKeyAttributes */
-	sc_format_asn1_entry(asn1_type_authkey_attr + 0, asn1_authkey_attr, NULL, 0);
 	sc_format_asn1_entry(asn1_authkey_attr + 0, &info.attrs.authkey.derived, &derived_len, 0);
 	sc_format_asn1_entry(asn1_authkey_attr + 1, &info.attrs.authkey.skey_id, NULL, 0);
 
@@ -223,7 +211,6 @@ int sc_pkcs15_encode_aodf_entry(sc_context_t *ctx,
 
 	sc_copy_asn1_entry(c_asn1_auth_type, asn1_auth_type);
 	sc_copy_asn1_entry(c_asn1_auth_type_choice, asn1_auth_type_choice);
-	sc_copy_asn1_entry(c_asn1_type_pin_attr, asn1_type_pin_attr);
 	sc_copy_asn1_entry(c_asn1_pin_attr, asn1_pin_attr);
 	sc_copy_asn1_entry(c_asn1_com_ao_attr, asn1_com_ao_attr);
 
